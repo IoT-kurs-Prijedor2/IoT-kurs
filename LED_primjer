@@ -1,4 +1,4 @@
-const int LED = 19;
+const int LED = 19;   //Ubaciti broj pina na ESP-ju koji se koristi za paljenje LEDa
 
 // the setup function runs once when you press reset or power the board
 void setup() {
