@@ -1,0 +1,57 @@
+#include "DHT.h"
+#define DHTPIN 15                   //Ovdje deklarišemo Pin za čitanje podataka sa DHT11 senzora
+#define DHTTYPE DHT11               //Ovdje definišemo tip senzora
+DHT dht(DHTPIN,DHTTYPE);
+
+const int ledRed = 4;               //Deklarisanje varijabli i dodjeljivanje vrijednosti      
+const int ledYellow = 18;
+const int ledGreen = 5;
+const int ledBlue = 19;
+
+void setup() {
+Serial.begin(115200);               //Pokreni terminal
+Serial.println("DHT11 sensor!");
+dht.begin();                        //Inicijalizuj senzor
+pinMode(ledRed,OUTPUT);             //Inicijalizuj pin 4
+pinMode(ledYellow,OUTPUT);          //Inicijalizuj pin 18
+pinMode(ledGreen,OUTPUT);           //Inicijalizuj pin 5
+pinMode(ledBlue,OUTPUT);            //Inicijalizuj pin 19
+}
+
+void loop() {
+float h = dht.readHumidity();       //Očitaj temperaturu
+float t = dht.readTemperature();    //Očitaj rel. vlažnost  
+if(isnan(h) || isnan(t)) {          //Provjeri jeslu li vrijednosti sa senzora dobro očitane
+Serial.println("Failed to read from DHT sensor!");
+return;                             //...ako nisu, ponovi loop
+}
+Serial.print("Humidity: ");
+Serial.print(h);
+Serial.print(" %");
+Serial.print("Temperature: ");
+Serial.print(t);
+Serial.println(" *C ");
+delay(2000);
+
+if(t<28){
+  digitalWrite(ledGreen,HIGH);      //Upali zelenu 
+  digitalWrite(ledRed,LOW);         //...ali crvenu ugasi
+  digitalWrite(ledYellow,LOW);      //...i žutu takođe ugasi
+}
+if(28<=t && t<=30){
+  digitalWrite(ledYellow,HIGH);
+  digitalWrite(ledGreen,LOW);
+  digitalWrite(ledRed,LOW);
+}
+if(t>30){
+  digitalWrite(ledYellow,LOW);
+  digitalWrite(ledGreen,LOW);
+  digitalWrite(ledRed,HIGH);
+}
+if(h<10){                         //Upali plavu lampicu ako je rel.vlažnost niža od 10%
+  digitalWrite(ledBlue,HIGH);
+}
+else{                             //U slučaju da nije ispunjen ni jedan od uslova
+Serial.println("Nije ispunjen ni jedan uslov.");
+}                         
+} 
