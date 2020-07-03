@@ -1,0 +1,118 @@
+//Za custom characters, idite na https://omerk.github.io/lcdchargen/
+
+// include the library code:
+#include <LiquidCrystal.h>
+#include "DHT.h"
+//Ubaciti pin na ESP-ju koji se koristi za prenos podataka
+#define DHTPIN 18
+//our sensor is DHT11 type
+#define DHTTYPE DHT11
+//create an instance of DHT sensor
+DHT dht(DHTPIN, DHTTYPE);
+
+// initialize the library by associating any needed LCD interface pin
+// with the arduino pin number it is connected to
+const int RS = 22; 
+const int EN = 21;
+const int d4 = 27;
+const int d5 = 26;
+const int d6 = 25;
+const int d7 = 33;
+LiquidCrystal lcd(RS, EN, d4, d5, d6, d7);
+
+// Thermometer icon
+byte thermometerIcon[8] = {
+  B00100,
+  B01010,
+  B01010,
+  B01010,
+  B01010,
+  B10001,
+  B11111,
+  B01110
+};
+
+byte humidityIcon[8] = {
+  0b00000,
+  0b00100,
+  0b01010,
+  0b10001,
+  0b10001,
+  0b11111,
+  0b01110,
+  0b00000
+};
+
+byte heatIndexIcon[8] = {
+  0b00000,
+  0b01010,
+  0b11111,
+  0b11111,
+  0b11111,
+  0b01110,
+  0b00100,
+  0b00000
+};
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println("DHT11 sensor!");
+  //call begin to start sensor
+  dht.begin();
+  
+  // set up the LCD's number of columns and rows:
+  lcd.begin(20, 4);
+
+  //Create Icons:
+  lcd.createChar(1, thermometerIcon);
+  lcd.createChar(2, humidityIcon);
+  lcd.createChar(3, heatIndexIcon);
+}
+
+void loop() {
+//use the functions which are supplied by library
+float h = dht.readHumidity();
+// Read temperature as Celsius (the default)
+float t = dht.readTemperature();
+// Check if any reads failed and exit early (to try again).
+float hi = dht.computeHeatIndex(t, h, false);
+if (isnan(h) || isnan(t)) {
+Serial.println("Failed to read from DHT sensor!");
+return;
+}
+// print the result to Terminal
+Serial.print("Humidity: ");
+Serial.print(h);
+Serial.print(" %\t");
+Serial.print("Temperature: ");
+Serial.print(t);
+Serial.println(" *C ");
+Serial.print("Heat Index: ");
+Serial.print(hi);
+Serial.println(" *C ");
+
+// set the cursor to column 0, line 1
+// (note: line 1 is the second row, since counting begins with 0):
+lcd.clear();
+lcd.setCursor(0, 0);
+//lcd.print("Temperatura: ");
+lcd.write(1);
+lcd.print(" ");
+lcd.print(t);
+lcd.print(" C");
+lcd.setCursor(0, 1);
+//lcd.print("Rel. vlaga: ");
+lcd.write(2);
+lcd.print(" ");
+lcd.print(h);
+lcd.print(" %");
+lcd.setCursor(0, 2);
+//lcd.print("Heat Index: ");
+lcd.write(3);
+lcd.print(" ");
+lcd.print(hi);
+lcd.print(" C");
+
+//we delay a little bit for next read
+delay(2000);
+}
