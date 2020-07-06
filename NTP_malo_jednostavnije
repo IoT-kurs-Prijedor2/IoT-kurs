@@ -31,12 +31,7 @@ void setup(){
   WiFi.mode(WIFI_OFF);
 }
 
-void loop(){
-  delay(1000);
-  printLocalTime();
-}
-
-void printLocalTime(){
+void printLocalTime() {
   struct tm timeinfo;
   if(!getLocalTime(&timeinfo)){
     Serial.println("Failed to obtain time");
@@ -80,3 +75,10 @@ void printLocalTime(){
     delay(20000);
   }
 }
+
+void loop(){
+  delay(1000);
+  printLocalTime();
+}
+
+
