@@ -1,0 +1,175 @@
+//Za custom characters, idite na https://omerk.github.io/lcdchargen/
+
+// include the library code:
+#include <LiquidCrystal.h>
+#include "DHT.h"
+#include <HTTPClient.h>
+
+//Ubaciti pin na ESP-ju koji se koristi za prenos podataka
+#define DHTPIN 18
+//our sensor is DHT11 type
+#define DHTTYPE DHT11
+//create an instance of DHT sensor
+DHT dht(DHTPIN, DHTTYPE);
+
+const char* ssid = "Gosti";
+const char* password = "preda2020";
+
+// Domain Name with full URL Path for HTTP POST Request
+const char* serverName = "http://api.thingspeak.com/update";
+// Service API Key
+String apiKey = "JN4JC8R8ZTL3UW2Z";
+
+// initialize the library by associating any needed LCD interface pin
+// with the arduino pin number it is connected to
+const int RS = 22; 
+const int EN = 21;
+const int d4 = 27;
+const int d5 = 26;
+const int d6 = 25;
+const int d7 = 33;
+LiquidCrystal lcd(RS, EN, d4, d5, d6, d7);
+
+// Thermometer icon
+byte thermometerIcon[8] = {
+  B00100,
+  B01010,
+  B01010,
+  B01010,
+  B01010,
+  B10001,
+  B11111,
+  B01110
+};
+
+byte humidityIcon[8] = {
+  0b00000,
+  0b00100,
+  0b01010,
+  0b10001,
+  0b10001,
+  0b11111,
+  0b01110,
+  0b00000
+};
+
+byte heatIndexIcon[8] = {
+  0b00000,
+  0b01010,
+  0b11111,
+  0b11111,
+  0b11111,
+  0b01110,
+  0b00100,
+  0b00000
+};
+
+void setup() {
+  
+  Serial.begin(115200);
+
+  WiFi.begin(ssid, password);
+  Serial.println("Connecting");
+  while(WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.print("Connected to WiFi network with IP Address: ");
+  Serial.println(WiFi.localIP());
+
+  
+  Serial.println("DHT11 sensor!");
+  //call begin to start sensor
+  dht.begin();
+  
+  // set up the LCD's number of columns and rows:
+  lcd.begin(20, 4);
+
+  //Create Icons:
+  lcd.createChar(1, thermometerIcon);
+  lcd.createChar(2, humidityIcon);
+  lcd.createChar(3, heatIndexIcon);
+}
+
+void loop() {
+
+//Očitaj temperaturu, rel. vlažnost i Indeks topline:
+float h = dht.readHumidity();
+float t = dht.readTemperature();
+
+//Provjeri očitanja:
+float hi = dht.computeHeatIndex(t, h, false);
+if (isnan(h) || isnan(t)) {
+Serial.println("Failed to read from DHT sensor!");
+return;
+}
+
+//Ispiši rezultat u Terminal:
+Serial.print("Humidity: ");
+Serial.print(h);
+Serial.print(" %\t");
+Serial.print("Temperature: ");
+Serial.print(t);
+Serial.println(" *C ");
+Serial.print("Heat Index: ");
+Serial.print(hi);
+Serial.println(" *C ");
+
+//Ispiši mjerenja na LCD:
+lcd.clear();
+lcd.setCursor(0, 0);
+//lcd.print("Temperatura: ");
+lcd.write(1);
+lcd.print(" ");
+lcd.print(t);
+lcd.print(" C");
+lcd.setCursor(0, 1);
+//lcd.print("Rel. vlaga: ");
+lcd.write(2);
+lcd.print(" ");
+lcd.print(h);
+lcd.print(" %");
+lcd.setCursor(0, 2);
+//lcd.print("Heat Index: ");
+lcd.write(3);
+lcd.print(" ");
+lcd.print(hi);
+lcd.print(" C");
+
+//HTTP Post na ThingSpeak:
+
+ if(WiFi.status()== WL_CONNECTED){
+      HTTPClient http;
+      
+      // Your Domain name with URL path or IP address with path
+      http.begin(serverName);
+      
+      // Specify content-type header
+      http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+      // Data to send with HTTP POST
+      String httpRequestData = "api_key=" + apiKey + "&field1=" + String(t); // + "&field2=" + String(h)           
+      // Send HTTP POST request
+      int httpResponseCode = http.POST(httpRequestData);
+      
+      /*
+      // If you need an HTTP request with a content type: application/json, use the following:
+      http.addHeader("Content-Type", "application/json");
+      // JSON data to send with HTTP POST
+      String httpRequestData = "{\"api_key\":\"" + apiKey + "\",\"field1\":\"" + String(random(40)) + "\"}";           
+      // Send HTTP POST request
+      int httpResponseCode = http.POST(httpRequestData);*/
+     
+      Serial.print("HTTP Response code: ");
+      Serial.println(httpResponseCode);
+        
+      // Free resources
+      http.end();
+    }
+    else {
+      Serial.println("WiFi Disconnected");
+    }
+    
+//Sačekaj do sledećeg mjerenja:
+delay(10000);
+}
