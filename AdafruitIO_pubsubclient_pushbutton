@@ -1,0 +1,163 @@
+/*********
+  Rui Santos
+  Complete project details at https://randomnerdtutorials.com  
+*********/
+
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <Wire.h>
+
+#include "DHT.h"
+
+// Replace the next variables with your SSID/Password combination
+const char* ssid = "Gosti";
+const char* password = "preda2020";
+
+// Add your MQTT Broker IP address, example:
+//const char* mqtt_server = "192.168.1.144";
+const char* mqtt_server = "io.adafruit.com";
+
+#define mqtt_user "mrakadol"
+#define outTopic  "mrakadol/F/onoffbutton"
+#define mqtt_key  "aio_dnJw835cepQq2WtBGmrBuARjQQ8M"
+
+//Kredencijali za DHT11 senzor:
+#define DHTPIN 19
+//our sensor is DHT11 type
+#define DHTTYPE DHT11
+//create an instance of DHT sensor
+DHT dht(DHTPIN, DHTTYPE);
+
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+
+// Button Pin
+const int buttonPin = 33;
+int buttonState;                      // current reading from the input pin (pushbutton)
+int lastButtonState = LOW;            // previous reading from the input pin (pushbutton)
+unsigned long lastDebounceTime = 0;   // the last time the output pin was toggled
+unsigned long debounceDelay = 50;     // the debounce time; increase if the output flickers
+
+const char* pushStatus=0;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(buttonPin, INPUT);
+
+  setup_wifi();
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
+}
+
+void setup_wifi() {
+  delay(10);
+  // We start by connecting to a WiFi network
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void callback(char* topic, byte* message, unsigned int length) {
+  Serial.print("Message arrived on topic: ");
+  Serial.print(topic);
+  Serial.print(". Message: ");
+  String newMessage;
+  
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)message[i]);
+    newMessage += (char)message[i];
+  }
+  Serial.println();
+
+  // Feel free to add more if statements to control more GPIOs with MQTT
+
+  // If a message is received on the topic onoffbutton, you check if the message is either "on" or "off". 
+  // Changes the output state according to the message
+  /*
+  if (String(topic) == "mrakadol/feeds/onoffbutton") {
+    Serial.print("Changing output to ");
+    if(messageTemp == "ON"){
+      Serial.println("ON");
+      digitalWrite(ledPin, HIGH);
+    }
+    else if(messageTemp == "OFF"){
+      Serial.println("OFF");
+      digitalWrite(ledPin, LOW);
+    }
+  }
+  */
+}
+
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    // Create a random client ID
+    String clientId = "ESP32Client-";
+    clientId += String(random(0xffff), HEX);
+    // Attempt to connect
+    if (client.connect(clientId.c_str(),mqtt_user, mqtt_key)) {
+      Serial.println("connected");
+      // Subscribe
+      //client.subscribe("mrakadol/feeds/onoffbutton");           //Ovdje ubaciti topic za subscribe
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+void loop() {
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+
+    // Read the state of the pushbutton and save it in a local variable
+  int reading = digitalRead(buttonPin);
+
+  // If the pushbutton state changed (due to noise or pressing it), reset the timer
+  if (reading != lastButtonState) {
+    // Reset the debouncing timer
+    lastDebounceTime = millis();
+  }
+  
+  // If the button state has changed, after the debounce time
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    // And if the current reading is different than the current buttonState    
+    if (reading != buttonState) {
+      buttonState = reading;
+      // Publish an MQTT message on topic esp32/led to toggle the LED (turn the LED on or off)P
+      if (buttonState == HIGH) {
+        Serial.println(("Sending button status"));
+        if (pushStatus == "OFF") {
+          pushStatus = "ON";
+        }
+        else {
+          pushStatus = "OFF";
+        }
+               
+        Serial.println(pushStatus);
+        client.publish("mrakadol/feeds/onoffbutton", pushStatus);
+      }
+    }
+  }
+  // Save the reading. Next time through the loop, it'll be the lastButtonState
+  lastButtonState = reading;
+}
