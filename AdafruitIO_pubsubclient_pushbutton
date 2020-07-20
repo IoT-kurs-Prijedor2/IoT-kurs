@@ -1,6 +1,5 @@
 /*********
-  Rui Santos
-  Complete project details at https://randomnerdtutorials.com  
+Download pubsubclient biblioteke: https://github.com/knolleary/pubsubclient
 *********/
 
 #include <WiFi.h>
