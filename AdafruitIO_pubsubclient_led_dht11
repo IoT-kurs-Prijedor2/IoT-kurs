@@ -19,7 +19,7 @@ const char* mqtt_server = "io.adafruit.com";
 //Dodati kredencijale sa kojima smo se registrovali na AdafruitIO:
 #define mqtt_user "mrakadol"
 #define outTopic  "mrakadol/F/onoffbutton"
-#define mqtt_key  "aio_dnJw835cepQq2WtBGmrBuARjQQ8M"
+#define mqtt_key  "aio_WsSI53m6Zmi5w2B2eDB4TDdkvFr3"
 
 //DHT11 senzor:
 #define DHTPIN 19
