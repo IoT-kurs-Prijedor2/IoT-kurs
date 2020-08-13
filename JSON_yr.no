@@ -1,6 +1,7 @@
 //***
 //ArduinoJson biblioteka treba biti verzija 6.0 i više
 //Struktuiranje json dokumenta se može uraditi na: https://jsonlint.com/
+//aa3486d99e0a0e4c645643350a747a36
 //***
 
 #include <WiFi.h>
