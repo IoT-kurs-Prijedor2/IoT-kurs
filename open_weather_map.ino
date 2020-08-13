@@ -2,7 +2,7 @@
 //ArduinoJson biblioteka treba biti verzija 6.0 i više
 //Struktuiranje json dokumenta se može uraditi na: https://jsonlint.com/
 //***
-
+int timeZone = 2;
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -58,7 +58,7 @@ void loop() {
   struct tm *tmp = gmtime(&unixtimestamp);
 
   //printf("%02d:%02d:%02d\n", tmp->tm_hour, tmp->tm_min, tmp->tm_sec);
-  int h = tmp->tm_hour;
+  int h = tmp->tm_hour + timeZone;
   int m = tmp->tm_min;
   int s = tmp->tm_sec;
 
