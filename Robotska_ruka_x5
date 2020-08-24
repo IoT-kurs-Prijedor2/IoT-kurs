@@ -1,0 +1,352 @@
+/*********
+  Rui Santos
+  Complete project details at https://RandomNerdTutorials.com/esp32-esp8266-web-server-timer-pulse/
+  
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+*********/
+
+// Import required libraries
+#ifdef ESP32
+  #include <WiFi.h>
+  #include <AsyncTCP.h>
+#else
+  #include <ESP8266WiFi.h>
+  #include <ESPAsyncTCP.h>
+#endif
+#include <ESPAsyncWebServer.h>
+#include <Servo.h>
+
+Servo myservo1;  // create servo object to control a servo
+Servo myservo2;
+Servo myservo3;
+Servo myservo4;
+Servo myservo5;
+// twelve servo objects can be created on most boards
+
+/*int pos1 = 0;    // variable to store the servo position
+int pos2 = 0;
+int pos3 = 0;
+int pos4 = 0;
+int pos5 = 0;*/
+
+// Replace with your network credentials
+const char* ssid = "PREDA";
+const char* password = "preda2oo4";
+
+const char* PARAM_INPUT_1 = "value";
+const char* PARAM_INPUT_2 = "value";
+const char* PARAM_INPUT_3 = "value";
+const char* PARAM_INPUT_4 = "value";
+const char* PARAM_INPUT_5 = "value";
+
+const char* PARAM_INPUT_6 = "state";
+
+const int output = 2;
+
+String timerSliderValue1 = "10";
+String timerSliderValue2 = "10";
+String timerSliderValue3 = "10";
+String timerSliderValue4 = "10";
+String timerSliderValue5 = "10";
+
+// Create AsyncWebServer object on port 80
+AsyncWebServer server(80);
+
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE HTML><html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP Web Server</title>
+  <style>
+    html {font-family: Arial; display: inline-block; text-align: center;}
+    h2 {font-size: 2.4rem;}
+    p {font-size: 2.2rem;}
+    body {max-width: 600px; margin:0px auto; padding-bottom: 25px;}
+    .switch {position: relative; display: inline-block; width: 120px; height: 68px} 
+    .switch input {display: none}
+    .slider {position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 34px}
+    .slider:before {position: absolute; content: ""; height: 52px; width: 52px; left: 8px; bottom: 8px; background-color: #fff; -webkit-transition: .4s; transition: .4s; border-radius: 68px}
+    input:checked+.slider {background-color: #2196F3}
+    input:checked+.slider:before {-webkit-transform: translateX(52px); -ms-transform: translateX(52px); transform: translateX(52px)}
+    .slider2 { -webkit-appearance: none; margin: 14px; width: 300px; height: 20px; background: #ccc;
+      outline: none; -webkit-transition: .2s; transition: opacity .2s;}
+    .slider2::-webkit-slider-thumb {-webkit-appearance: none; appearance: none; width: 30px; height: 30px; background: #2f4468; cursor: pointer;}
+    .slider2::-moz-range-thumb { width: 30px; height: 30px; background: #2f4468; cursor: pointer; } 
+  </style>
+</head>
+<body>
+  <h2>ESP Web Server</h2>
+  <p><span id="timerValue1">%TIMERVALUE1%</span> stepeni</p>
+  <p><input type="range" onchange="updateSliderTimer1(this)" id="timerSlider1" min="0" max="180" value="%TIMERVALUE1%" step="1" class="slider2"></p>
+ 
+  <p><span id="timerValue2">%TIMERVALUE2%</span> stepeni</p>
+  <p><input type="range" onchange="updateSliderTimer2(this)" id="timerSlider2" min="0" max="180" value="%TIMERVALUE2%" step="1" class="slider2"></p>
+
+  <p><span id="timerValue3">%TIMERVALUE3%</span> stepeni</p>
+  <p><input type="range" onchange="updateSliderTimer3(this)" id="timerSlider3" min="0" max="180" value="%TIMERVALUE3%" step="1" class="slider2"></p>
+
+  <p><span id="timerValue4">%TIMERVALUE4%</span> stepeni</p>
+  <p><input type="range" onchange="updateSliderTimer4(this)" id="timerSlider4" min="0" max="180" value="%TIMERVALUE4%" step="1" class="slider2"></p>
+
+  <p><span id="timerValue5">%TIMERVALUE5%</span> stepeni</p>
+  <p><input type="range" onchange="updateSliderTimer5(this)" id="timerSlider5" min="0" max="180" value="%TIMERVALUE5%" step="1" class="slider2"></p>
+  %BUTTONPLACEHOLDER%
+<script>
+function toggleCheckbox(element) {
+  var xhr = new XMLHttpRequest();
+  if(element.checked){ xhr.open("GET", "/update?state=1", true); xhr.send();
+  }
+  else {
+  xhr.open("GET", "/update?state=0", true); 
+    document.getElementById(element.id).checked = false; xhr.send();
+  }
+}
+function updateSliderTimer1(element) {
+  var sliderValue1 = document.getElementById("timerSlider1").value;
+  document.getElementById("timerValue1").innerHTML = sliderValue1;
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", "/slider1?value="+sliderValue1, true);
+  xhr.send();
+}
+function updateSliderTimer2(element) {
+  var sliderValue2 = document.getElementById("timerSlider2").value;
+  document.getElementById("timerValue2").innerHTML = sliderValue2;
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", "/slider2?value="+sliderValue2, true);
+  xhr.send();
+}
+function updateSliderTimer3(element) {
+  var sliderValue3 = document.getElementById("timerSlider3").value;
+  document.getElementById("timerValue3").innerHTML = sliderValue3;
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", "/slider3?value="+sliderValue3, true);
+  xhr.send();
+}
+function updateSliderTimer4(element) {
+  var sliderValue4 = document.getElementById("timerSlider4").value;
+  document.getElementById("timerValue4").innerHTML = sliderValue4;
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", "/slider4?value="+sliderValue4, true);
+  xhr.send();
+}
+function updateSliderTimer5(element) {
+  var sliderValue5 = document.getElementById("timerSlider5").value;
+  document.getElementById("timerValue5").innerHTML = sliderValue5;
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", "/slider5?value="+sliderValue5, true);
+  xhr.send();
+}
+</script>
+</body>
+</html>
+)rawliteral";
+
+// Replaces placeholder with button section in your web page
+String processor(const String& var){
+  //Serial.println(var);
+  if(var == "BUTTONPLACEHOLDER"){
+    String buttons = "";
+    String outputStateValue = outputState();
+    buttons+= "<p><label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleCheckbox(this)\" id=\"output\" " + outputStateValue + "><span class=\"slider\"></span></label></p>";
+    return buttons;
+  }
+  else if(var == "TIMERVALUE1"){
+    return timerSliderValue1;
+  }
+  else if(var == "TIMERVALUE2"){
+    return timerSliderValue2;
+  }
+  else if(var == "TIMERVALUE3"){
+    return timerSliderValue3;
+  }
+  else if(var == "TIMERVALUE4"){
+    return timerSliderValue4;
+  }
+  else if(var == "TIMERVALUE5"){
+    return timerSliderValue5;
+  }
+  return String();
+}
+
+String outputState(){
+  if(digitalRead(output)){
+    return "checked";
+  }
+  else {
+    return "";
+  }
+  return "";
+}
+
+void setup(){
+  // Serial port for debugging purposes
+  Serial.begin(115200);
+
+  myservo1.attach(13);  // attaches the servo on pin 13 to the servo object
+  myservo2.attach(12);
+  myservo3.attach(14);
+  myservo4.attach(27);
+  myservo5.attach(26);
+
+  myservo1.write(timerSliderValue1.toInt());
+  myservo2.write(timerSliderValue2.toInt());
+  myservo3.write(timerSliderValue3.toInt());
+  myservo4.write(timerSliderValue4.toInt());
+  myservo5.write(timerSliderValue5.toInt());
+
+  pinMode(output, OUTPUT);
+  digitalWrite(output, LOW);
+
+  // Connect to Wi-Fi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi..");
+  }
+
+  // Print ESP Local IP Address
+  Serial.println(WiFi.localIP());
+
+  // Route for root / web page
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", index_html, processor);
+  });
+
+  // Send a GET request to <ESP_IP>/update?state=<inputMessage>
+  server.on("/update", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String inputMessage;
+    // GET input1 value on <ESP_IP>/update?state=<inputMessage>
+    if (request->hasParam(PARAM_INPUT_6)) {
+      inputMessage = request->getParam(PARAM_INPUT_6)->value();
+      digitalWrite(output, inputMessage.toInt());
+    }
+    else {
+      inputMessage = "No message sent";
+    }
+    Serial.println(inputMessage);
+    request->send(200, "text/plain", "OK");
+  });
+
+  //Slider 1 - #Postolje
+  // Send a GET request to <ESP_IP>/slider?value=<inputMessage>
+  server.on("/slider1", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String inputMessage1;
+    // GET input1 value on <ESP_IP>/slider?value=<inputMessage>
+    if (request->hasParam(PARAM_INPUT_1)) {
+      inputMessage1 = request->getParam(PARAM_INPUT_1)->value();
+      timerSliderValue1 = inputMessage1;
+    }
+    else {
+      inputMessage1 = "No message sent";
+    }
+    Serial.println(inputMessage1);
+    int pos1 = inputMessage1.toInt();
+    
+    myservo1.write(pos1);
+    request->send(200, "text/plain", "OK");
+  });
+
+  //Slider 2 - #servo 2
+  // Send a GET request to <ESP_IP>/slider?value=<inputMessage>
+  server.on("/slider2", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String inputMessage2;
+    // GET input1 value on <ESP_IP>/slider?value=<inputMessage>
+    if (request->hasParam(PARAM_INPUT_2)) {
+      inputMessage2 = request->getParam(PARAM_INPUT_2)->value();
+      timerSliderValue2 = inputMessage2;
+    }
+    else {
+      inputMessage2 = "No message sent";
+    }
+    Serial.println(inputMessage2);
+    int pos2 = inputMessage2.toInt();
+    
+    myservo2.write(pos2);
+    request->send(200, "text/plain", "OK");
+  });
+
+  //Slider 3 - #servo 3
+  // Send a GET request to <ESP_IP>/slider?value=<inputMessage>
+  server.on("/slider3", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String inputMessage3;
+    // GET input1 value on <ESP_IP>/slider?value=<inputMessage>
+    if (request->hasParam(PARAM_INPUT_3)) {
+      inputMessage3 = request->getParam(PARAM_INPUT_3)->value();
+      timerSliderValue3 = inputMessage3;
+    }
+    else {
+      inputMessage3 = "No message sent";
+    }
+    Serial.println(inputMessage3);
+    int pos3 = inputMessage3.toInt();
+    
+    myservo3.write(pos3);
+    request->send(200, "text/plain", "OK");
+  });
+
+  //Slider 4 - #servo 4
+  // Send a GET request to <ESP_IP>/slider?value=<inputMessage>
+  server.on("/slider4", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String inputMessage4;
+    // GET input1 value on <ESP_IP>/slider?value=<inputMessage>
+    if (request->hasParam(PARAM_INPUT_4)) {
+      inputMessage4 = request->getParam(PARAM_INPUT_4)->value();
+      timerSliderValue4 = inputMessage4;
+    }
+    else {
+      inputMessage4 = "No message sent";
+    }
+    Serial.println(inputMessage4);
+    int pos4 = inputMessage4.toInt();
+    
+    myservo4.write(pos4);
+    request->send(200, "text/plain", "OK");
+  });
+
+  //Slider 5 - #servo 5
+  // Send a GET request to <ESP_IP>/slider?value=<inputMessage>
+  server.on("/slider5", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String inputMessage5;
+    // GET input1 value on <ESP_IP>/slider?value=<inputMessage>
+    if (request->hasParam(PARAM_INPUT_5)) {
+      inputMessage5 = request->getParam(PARAM_INPUT_5)->value();
+      timerSliderValue5 = inputMessage5;
+    }
+    else {
+      inputMessage5 = "No message sent";
+    }
+    Serial.println(inputMessage5);
+    int pos5 = inputMessage5.toInt();
+    
+    myservo5.write(pos5);
+    request->send(200, "text/plain", "OK");
+  });
+    
+    /*Serial.println(inputMessage);
+    int pos = inputMessage.toInt();
+    
+    myservo1.write(pos);
+    request->send(200, "text/plain", "OK");*/
+
+  /*//Slider 2 - #Lakat
+  // Send a GET request to <ESP_IP>/slider?value=<inputMessage>
+  server.on("/slider2", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String inputMessage2;
+    // GET input1 value on <ESP_IP>/slider?value=<inputMessage>
+    if (request->hasParam(PARAM_INPUT_3)) {
+      inputMessage2 = request->getParam(PARAM_INPUT_3)->value();
+      timerSliderValue2 = inputMessage2;
+    }
+    else {
+      inputMessage2 = "No message sent";
+    }
+  });*/
+  
+  // Start server
+  server.begin();
+}
+  
+void loop() {
+  
+}
