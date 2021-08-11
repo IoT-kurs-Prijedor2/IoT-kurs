@@ -1,0 +1,151 @@
+/*********
+  Rui Santos
+  Complete project details at https://RandomNerdTutorials.com/esp32-lora-sensor-web-server/
+  
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files.
+  
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+*********/
+
+//Libraries for LoRa
+#include <SPI.h>
+#include <LoRa.h>
+#include "DHT.h"
+
+//Ubaciti pin na ESP-ju koji se koristi za prenos podataka
+#define DHTPIN 32
+//our sensor is DHT11 type
+#define DHTTYPE DHT22
+//create an instance of DHT sensor
+DHT dht(DHTPIN, DHTTYPE);
+
+//define the pins used by the LoRa transceiver module
+#define SCK 18
+#define MISO 19
+#define MOSI 23
+#define SS 5
+#define RST 14
+#define DIO0 2
+
+//433E6 for Asia
+//866E6 for Europe
+//915E6 for North America
+#define BAND 433E6
+#define LED 12
+
+//Konverzija za Deep Sleep:
+#define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
+#define TIME_TO_SLEEP 10  /* Time ESP32 will go to sleep (in seconds) */
+
+//packet counter
+int readingID;
+
+int counter = 0;
+String LoRaMessage = "";
+
+//Kalibracija senzora za vlažnost zemljišta:
+//Senzor 10 cm:
+const int airValue10cm = 890;   //you need to replace this value with Value_1
+const int waterValue10cm = 320;  //you need to replace this value with Value_2
+
+//Senzor 20 cm:
+const int airValue20cm = 890;   //you need to replace this value with Value_1
+const int waterValue20cm = 320;  //you need to replace this value with Value_2
+
+//Senzor 40 cm:
+const int airValue40cm = 890;   //you need to replace this value with Value_1
+const int waterValue40cm = 320;  //you need to replace this value with Value_2
+
+
+float temperature = 0;
+float humidity = 0;
+float soilMoisture10cm = 0;
+float soilMoisture20cm = 0;
+float soilMoisture40cm = 0;
+float percentMoist10cm = 0;
+float percentMoist20cm = 0;
+float percentMoist40cm = 0;
+
+//Initialize LoRa module
+void startLoRA(){
+  //SPI LoRa pins
+  SPI.begin(SCK, MISO, MOSI, SS);
+  //setup LoRa transceiver module
+  LoRa.setPins(SS, RST, DIO0);
+
+  while (!LoRa.begin(BAND) && counter < 10) {
+    Serial.print(".");
+    counter++;
+    delay(500);
+  }
+   if (counter == 10) {
+    // Increment readingID on every new reading
+    readingID++;
+    Serial.println("Starting LoRa failed!"); 
+  }
+  Serial.println("LoRa Initialization OK!");
+  delay(2000);
+}
+
+void getReadings(){
+  //Prilagoditi kod za naš senzor:
+  temperature = dht.readTemperature();
+  humidity = dht.readHumidity();
+  
+  soilMoisture10cm = analogRead(25);
+  percentMoist10cm = map(soilMoisture10cm, airValue10cm, waterValue10cm, 0, 100);
+  delay(500);
+  
+  soilMoisture20cm = analogRead(26);
+  percentMoist20cm = map(soilMoisture20cm, airValue20cm, waterValue20cm, 0, 100);
+  delay(500);
+
+  soilMoisture40cm = analogRead(27);
+  percentMoist40cm = map(soilMoisture40cm, airValue40cm, waterValue40cm, 0, 100);
+  delay(500);
+
+  Serial.println(temperature);
+  Serial.println(humidity);
+  Serial.println(soilMoisture10cm);
+  Serial.println(soilMoisture20cm);
+  Serial.println(soilMoisture40cm);
+
+  if (isnan(temperature) || isnan(humidity)) {
+    Serial.println("Failed to read from DHT sensor!");
+  return;
+  }
+
+  if (isnan(soilMoisture10cm) || isnan(soilMoisture10cm) || isnan(soilMoisture40cm)) {
+    Serial.println("Failed to read from one of the Moisture sensors!");
+  return;
+  }
+}
+
+void sendReadings() {
+  LoRaMessage = String(readingID) + "/" + String(temperature) + "&" + String(humidity) + "#" + String(percentMoist10cm) + "$" + String(percentMoist20cm) + "%" + String(percentMoist40cm);
+  //Send LoRa packet to receiver
+  Serial.println(LoRaMessage);
+  LoRa.beginPacket();
+  digitalWrite(LED, HIGH);
+  LoRa.print(LoRaMessage);
+  LoRa.endPacket();
+  digitalWrite(LED, LOW);
+}
+
+void setup() {
+  //initialize Serial Monitor
+  Serial.begin(115200);
+  pinMode(LED, OUTPUT);
+  dht.begin();
+  startLoRA();
+  getReadings();
+  sendReadings();
+  //Podešavanje intervala za Deep Sleep:
+  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+  esp_deep_sleep_start();
+}
+
+void loop() {
+}
